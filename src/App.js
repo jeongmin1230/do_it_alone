@@ -1,28 +1,60 @@
 import './App.css';
 import { useState } from 'react';
 
-function Show(props) {
-  return <div>
-    <h3>{props.title}</h3>
-    <h5>{props.body}</h5>
-  </div>
-}
-
 function List(props) {
   const lis = [];
   for(let i = 0; i < props.topics.length; i++) {
-    let t = props.topics[i]
+    let t = props.topics[i];
     lis.push(<li key = {t.id}>
       <a id = {t.id} href={'/read/' + t.id} onClick={event => {
         event.preventDefault();
-        props.onClick(Number(event.target.id));
+        props.detail(Number(event.target.id));
       }}>{t.title}</a>
     </li>)
   }
   return <div>
-    <ul>
+    <ol>
       {lis}
-    </ul>
+    </ol>
+  </div>
+}
+
+function Create(props) {
+  return <div>
+    <form onSubmit={event => {
+      event.preventDefault();
+      const title = event.target.title.value;
+      const body = event.target.body.value;
+      props.create(title, body);
+    }}>
+      <p><input type='text' name='title' placeholder='제목'/></p>
+      <p><textarea name='body' placeholder='내용'/></p>
+      <p><input type='submit' value='작성' /></p>
+    </form>
+  </div>
+}
+
+function Read(props) {
+  return <div>
+    <h4>{props.title}</h4>
+    <h6>{props.body}</h6>
+  </div>
+}
+
+function Update(props) {
+  const [title, setTitle] = useState(props.title);
+  const [body, setBody] = useState(props.body);
+  return <div>
+    <form onSubmit={event => {
+      event.preventDefault();
+      const title = event.target.title.value;
+      const body = event.target.body.value;
+      props.update(title, body);
+    }}>
+      <p><input type='text' name='title' placeholder='제목' value={title} onChange={event => {setTitle(event.target.value)}}/></p>
+      <p><textarea name='body' placeholder='내용' value={body} onChange={event => {setBody(event.target.value)}} /></p>
+      <p><input type='submit' value='수정'/></p>
+    </form>
   </div>
 }
 
@@ -43,48 +75,75 @@ function Create(props) {
 }
 
 function App() {
-  const [topics, setTopics] = useState([{id: 1, title: '제목', body: '내용입니다.'}]);
+  const [topics, setTopics] = useState(
+    [{id: 0, title: '제목', body: '내용입니다.'}]
+  );
   const [mode, setMode] = useState('WELCOME');
   const [id, setId] = useState(topics.length);
-  const [nextId, setNextId] = useState(topics.length+1);
+  const [nextId, setNextId] = useState(topics.length);
   let content = null;
-  let optionContent = null;
-  if(mode === 'WELCOME'){
-    content = <Show title = 'CRUD복습 제목' body = 'react를 통해 구현'></Show>
-  } else if(mode==='CREATE') {
-    content = <Create onCreate = {(_title, _body) => {
+  let inDetail = null;
+  if(mode === 'WELCOME') {
+    content = <Read title = '복습' body = '리액트 앱'/>
+  } else if(mode === 'CREATE'){
+    content = <Create create={(_title, _body) => {
       const newTopic = {id: nextId, title: _title, body: _body};
       const newTopics = [...topics];
       newTopics.push(newTopic);
-      setTopics(newTopic);
-      setMode('READ');
+      setTopics(newTopics);
+      setMode('WELCOME');
       setId(nextId);
       setNextId(nextId+1);
-      console.log('topics :: ', topics)
     }}></Create>
   } else if(mode === 'READ') {
+    content = <Read title={topics[id].title} body={topics[id].body}/>
+    inDetail = <>
+      <button onClick={event => {
+        event.preventDefault();
+        setMode('UPDATE');
+      }}>수정</button>&nbsp;
+    <input type='button' value='삭제' onClick={() => {
+        const newTopics = [];
+        for(let i = 0; i < topics.length; i++) {
+          if(topics[i].id !== id) {
+            newTopics.push(topics[i]);
+          }
+        }
+        setTopics(newTopics)
+        setMode('WELCOME');
+      }}></input>
+    </>
+  } else if(mode === 'UPDATE') {
     let title, body = null;
-    for(let i = 0; i < topics.length; i++){
-      const topic = topics[i]
-      if(topic.id === id) {
-        title = topic.title;
-        body = topic.body;
+    for(let i = 0; i < topics.length; i++) {
+      if(topics[i].id === id) {
+        title = topics[i].title;
+        body = topics[i].body;
       }
-    } 
-    content = <Show title={title} body={body}></Show>
+    }
+    content = <Update title = {title} body = {body} update = {(title, body) => {
+      const newTopics = [...topics]
+      const updateTopic = {id: id, title: title, body: body};
+      for(let i = 0; i < newTopics.length; i++) {
+        if(newTopics[i].id === id) {
+          newTopics[i] = updateTopic;
+          break;
+        }
+      }
+      setTopics(newTopics);
+      setMode('WELCOME');
+    }}/>
   }
   return <div className='body'>
-    <a href='/create' onClick={event => {
-      event.preventDefault();
-      setMode('CREATE');
-    }}>새 글 작성</a>
-    <List topics={topics} onClick={(_id)=> {
-      setMode('READ');
-      setId(_id);
-    }}></List>
-    {content}
-    {optionContent}
+    <button onClick={() => setMode('WELCOME')}>처음 화면으로</button>&nbsp;
+    <button onClick={() => setMode('CREATE')}>새 글 생성</button>
     <hr/>
+    {content}
+    {inDetail}
+    <List topics={topics} detail={(_id) => {
+      setId(_id);
+      setMode('READ');
+    }}></List>
   </div>
 }
 
